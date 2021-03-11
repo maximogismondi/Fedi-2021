@@ -1,11 +1,4 @@
-import {
-  Region,
-  Pelicula,
-  Contenido,
-  Serie,
-  Usuario,
-  Sistema,
-} from "../clases";
+import {Region,  Pelicula,  Contenido,  Serie,  Usuario,  Sistema} from "../clases";
 
 let IPMStreaming = new Sistema();
 

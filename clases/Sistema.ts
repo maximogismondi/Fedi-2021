@@ -1,3 +1,0 @@
-class Sistema {
-  constructor(parameters) {}
-}
