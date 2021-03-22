@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-var clases_1 = require("../clases");
+var clases_1 = require("./clases");
 var IPMStreaming = new clases_1.Sistema();
 // Usuario de Argentina
 var mi_usuario = new clases_1.Usuario("Pepe", clases_1.Region.AR);

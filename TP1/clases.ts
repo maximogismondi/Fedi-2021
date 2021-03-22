@@ -119,7 +119,7 @@ export class Serie extends Titulo {
 export class Usuario {
   private username: string;
   private region: Region;
-  private reproduccion: Map<Titulo, number>;
+  private reproduccion: Map<Titulo, [number, number]>;
 
   constructor(username: string, region: Region) {
     this.reproduccion = new Map();
@@ -136,21 +136,18 @@ export class Usuario {
   }
 
   visto(titulo: Titulo): boolean {
-    for (let entry of Array.from(this.reproduccion.entries())) {
-      let key = entry[0];
-      let value = entry[1];
-      if (titulo.getTitulo == key.getTitulo) {
-        if (key instanceof Pelicula) {
-          if (value == key.getContenido().getDuracion()) {
-            return true;
-          }
-          return false;
-        } else if (key instanceof Serie) {
-          if (value == key.duracionTotal()) {
-            return true;
-          }
-          return false;
+    if (this.reproduccion.has(titulo)) {
+      let value = this.reproduccion.get(titulo);
+      if (titulo instanceof Pelicula) {
+        if (value[0] == titulo.getContenido().getDuracion()) {
+          return true;
         }
+        return false;
+      } else if (titulo instanceof Serie) {
+        if (value[1] >= titulo.cantidadDeCapitulos()) {
+          return true;
+        }
+        return false;
       }
     }
     return false;
@@ -158,15 +155,15 @@ export class Usuario {
 
   viendo(titulo: Titulo): boolean {
     let tiempoVisto: number = 0;
-    for (let entry of Array.from(this.reproduccion.entries())) {
-      let key = entry[0];
-      let value = entry[1];
-      if (titulo.getTitulo() == key.getTitulo()) {
-        tiempoVisto += value;
-      }
+    if (this.reproduccion.has(titulo)) {
+      let value = this.reproduccion.get(titulo);
+      tiempoVisto = value[0];
     }
     if (titulo instanceof Pelicula) {
-      if (tiempoVisto < titulo.getContenido().getDuracion() && tiempoVisto > 0) {
+      if (
+        tiempoVisto < titulo.getContenido().getDuracion() &&
+        tiempoVisto > 0
+      ) {
         return true;
       }
     } else if (titulo instanceof Serie) {
@@ -182,36 +179,38 @@ export class Usuario {
       if (this.visto(serie)) {
         return serie.cantidadDeCapitulos() - 1;
       }
-      let tiempoVisto: number = 0;
-      for (let entry of Array.from(this.reproduccion.entries())) {
-        let key = entry[0];
-        let value = entry[1];
-        if (key.getTitulo == serie.getTitulo) {
-          tiempoVisto += value;
-        }
+      if (this.reproduccion.has(serie)) {
+        return this.reproduccion.get(serie)[1];
       }
-      let tiempoAcumulado: number = 0;
-      for (let i = 0; tiempoVisto >= tiempoAcumulado; i++) {
-        tiempoAcumulado += serie.obtenerCapitulo(i).duracion;
-        if (tiempoVisto < tiempoAcumulado) {
-          return i;
-        }
-      }
+      return 0;
     }
   }
 
   ver(titulo: Titulo, tiempo_visualizado: number): boolean {
     if (titulo.disponible(this.region)) {
-      for (let entry of Array.from(this.reproduccion.entries())) {
-        let key = entry[0];
-        let value = entry[1];
-        if (key.getTitulo == titulo.getTitulo) {
-          this.reproduccion.delete(titulo);
-          this.reproduccion.set(titulo, value + tiempo_visualizado);
-          return true;
+      if (this.reproduccion.has(titulo)) {
+        let value = this.reproduccion.get(titulo);
+        this.reproduccion.set(titulo, [
+          value[0] + tiempo_visualizado,
+          value[1],
+        ]);
+        value[0] += tiempo_visualizado;
+        if (titulo instanceof Serie) {
+          while (
+            titulo.cantidadDeCapitulos() > value[1] &&
+            titulo.obtenerCapitulo(value[1]).getDuracion() <= value[0]
+          ) {
+            this.reproduccion.set(titulo, [
+              value[0] - titulo.obtenerCapitulo(value[1]).getDuracion(),
+              value[1] + 1,
+            ]);
+            value[0] -= titulo.obtenerCapitulo(value[1]).getDuracion();
+            value[1] += 1;
+          }
         }
+        return true;
       }
-      this.reproduccion.set(titulo, tiempo_visualizado);
+      this.reproduccion.set(titulo, [tiempo_visualizado, 0]);
       return true;
     }
     return false;

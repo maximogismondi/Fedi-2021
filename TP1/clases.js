@@ -131,39 +131,32 @@ var Usuario = /** @class */ (function () {
         return this.region;
     };
     Usuario.prototype.visto = function (titulo) {
-        for (var _i = 0, _a = Array.from(this.reproduccion.entries()); _i < _a.length; _i++) {
-            var entry = _a[_i];
-            var key = entry[0];
-            var value = entry[1];
-            if (titulo.getTitulo == key.getTitulo) {
-                if (key instanceof Pelicula) {
-                    if (value == key.getContenido().getDuracion()) {
-                        return true;
-                    }
-                    return false;
+        if (this.reproduccion.has(titulo)) {
+            var value = this.reproduccion.get(titulo);
+            if (titulo instanceof Pelicula) {
+                if (value[0] == titulo.getContenido().getDuracion()) {
+                    return true;
                 }
-                else if (key instanceof Serie) {
-                    if (value == key.duracionTotal()) {
-                        return true;
-                    }
-                    return false;
+                return false;
+            }
+            else if (titulo instanceof Serie) {
+                if (value[1] >= titulo.cantidadDeCapitulos()) {
+                    return true;
                 }
+                return false;
             }
         }
         return false;
     };
     Usuario.prototype.viendo = function (titulo) {
         var tiempoVisto = 0;
-        for (var _i = 0, _a = Array.from(this.reproduccion.entries()); _i < _a.length; _i++) {
-            var entry = _a[_i];
-            var key = entry[0];
-            var value = entry[1];
-            if (titulo.getTitulo() == key.getTitulo()) {
-                tiempoVisto += value;
-            }
+        if (this.reproduccion.has(titulo)) {
+            var value = this.reproduccion.get(titulo);
+            tiempoVisto = value[0];
         }
         if (titulo instanceof Pelicula) {
-            if (tiempoVisto < titulo.getContenido().getDuracion() && tiempoVisto > 0) {
+            if (tiempoVisto < titulo.getContenido().getDuracion() &&
+                tiempoVisto > 0) {
                 return true;
             }
         }
@@ -179,37 +172,35 @@ var Usuario = /** @class */ (function () {
             if (this.visto(serie)) {
                 return serie.cantidadDeCapitulos() - 1;
             }
-            var tiempoVisto = 0;
-            for (var _i = 0, _a = Array.from(this.reproduccion.entries()); _i < _a.length; _i++) {
-                var entry = _a[_i];
-                var key = entry[0];
-                var value = entry[1];
-                if (key.getTitulo == serie.getTitulo) {
-                    tiempoVisto += value;
-                }
+            if (this.reproduccion.has(serie)) {
+                return this.reproduccion.get(serie)[1];
             }
-            var tiempoAcumulado = 0;
-            for (var i = 0; tiempoVisto >= tiempoAcumulado; i++) {
-                tiempoAcumulado += serie.obtenerCapitulo(i).duracion;
-                if (tiempoVisto < tiempoAcumulado) {
-                    return i;
-                }
-            }
+            return 0;
         }
     };
     Usuario.prototype.ver = function (titulo, tiempo_visualizado) {
         if (titulo.disponible(this.region)) {
-            for (var _i = 0, _a = Array.from(this.reproduccion.entries()); _i < _a.length; _i++) {
-                var entry = _a[_i];
-                var key = entry[0];
-                var value = entry[1];
-                if (key.getTitulo == titulo.getTitulo) {
-                    this.reproduccion["delete"](titulo);
-                    this.reproduccion.set(titulo, value + tiempo_visualizado);
-                    return true;
+            if (this.reproduccion.has(titulo)) {
+                var value = this.reproduccion.get(titulo);
+                this.reproduccion.set(titulo, [
+                    value[0] + tiempo_visualizado,
+                    value[1],
+                ]);
+                value[0] += tiempo_visualizado;
+                if (titulo instanceof Serie) {
+                    while (titulo.cantidadDeCapitulos() > value[1] &&
+                        titulo.obtenerCapitulo(value[1]).getDuracion() <= value[0]) {
+                        this.reproduccion.set(titulo, [
+                            value[0] - titulo.obtenerCapitulo(value[1]).getDuracion(),
+                            value[1] + 1,
+                        ]);
+                        value[0] -= titulo.obtenerCapitulo(value[1]).getDuracion();
+                        value[1] += 1;
+                    }
                 }
+                return true;
             }
-            this.reproduccion.set(titulo, tiempo_visualizado);
+            this.reproduccion.set(titulo, [tiempo_visualizado, 0]);
             return true;
         }
         return false;
